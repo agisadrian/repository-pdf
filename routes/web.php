@@ -1,0 +1,28 @@
+<?php
+
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('/cari', [DocumentController::class, 'search'])->name('document.search');
+Route::get('/dokumen/{slug}', [DocumentController::class, 'show'])->name('document.show');
+Route::get('/dokumen/{slug}/download', [DocumentController::class, 'download'])->name('document.download');
+Route::get('/dokumen/{slug}/preview', [DocumentController::class, 'preview'])->name('document.preview');
+
+// Login & Logout
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Halaman khusus admin
+Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // CRUD Dokumen: otomatis bikin route index, create, store, edit, update, destroy
+    Route::resource('documents', AdminDocumentController::class)->except(['show']);
+});
