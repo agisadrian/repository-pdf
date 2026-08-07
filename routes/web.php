@@ -25,4 +25,12 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 
     // CRUD Dokumen: otomatis bikin route index, create, store, edit, update, destroy
     Route::resource('documents', AdminDocumentController::class)->except(['show']);
+
+    // Generate ulang sampul otomatis dari PDF yang sudah ada (buat dokumen lama)
+    Route::post('/documents/{document}/generate-cover', [AdminDocumentController::class, 'generateCover'])
+        ->name('documents.generateCover');
+
+    // Upload banyak PDF sekaligus
+    Route::get('/documents-bulk', [AdminDocumentController::class, 'bulkCreate'])->name('documents.bulkCreate');
+    Route::post('/documents-bulk', [AdminDocumentController::class, 'bulkStore'])->name('documents.bulkStore');
 });

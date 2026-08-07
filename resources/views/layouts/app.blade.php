@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Repository PDF')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +14,7 @@
 
     <header class="navbar">
         <div class="container navbar-inner">
-            <a href="{{ url('/') }}" class="brand">📚 Repository PDF</a>
+            <a href="{{ url('/') }}" class="brand">Repository PDF</a>
             <nav>
                 <a href="{{ url('/') }}">Home</a>
                 <a href="{{ route('document.search') }}">Cari Dokumen</a>

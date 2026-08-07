@@ -19,6 +19,13 @@
         <div class="document-grid">
             @foreach ($documents as $doc)
                 <a href="{{ url('/dokumen/' . $doc->slug) }}" class="document-card">
+                    <div class="doc-cover">
+                        @if ($doc->cover)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::url($doc->cover) }}" alt="">
+                        @else
+                            <span class="doc-cover-placeholder">{{ substr($doc->title, 0, 1) }}</span>
+                        @endif
+                    </div>
                     <div class="doc-title">{{ $doc->title }}</div>
                     <div class="doc-meta">{{ $doc->author ?? 'Penulis tidak diketahui' }} &middot; {{ $doc->year }}</div>
                     @if ($doc->category)

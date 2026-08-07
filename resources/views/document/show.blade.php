@@ -7,18 +7,26 @@
     <a href="{{ url('/') }}" class="back-link">&larr; Kembali</a>
 
     <div class="detail-card">
-        <h1 class="page-title">{{ $document->title }}</h1>
-
-        <div class="detail-meta">
-            <span><strong>Penulis:</strong> {{ $document->author ?? '-' }}</span>
-            <span><strong>Tahun:</strong> {{ $document->year ?? '-' }}</span>
-            <span><strong>Penerbit:</strong> {{ $document->publisher ?? '-' }}</span>
-        </div>
-
-        <div class="detail-badges">
-            @if ($document->category)
-                <span class="badge">{{ $document->category->name }}</span>
+        <div class="detail-header">
+            @if ($document->cover)
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($document->cover) }}" alt="" class="detail-cover">
             @endif
+
+            <div class="detail-header-info">
+                <h1 class="page-title">{{ $document->title }}</h1>
+
+                <div class="detail-meta">
+                    <span><strong>Penulis:</strong> {{ $document->author ?? '-' }}</span>
+                    <span><strong>Tahun:</strong> {{ $document->year ?? '-' }}</span>
+                    <span><strong>Penerbit:</strong> {{ $document->publisher ?? '-' }}</span>
+                </div>
+
+                <div class="detail-badges">
+                    @if ($document->category)
+                        <span class="badge">{{ $document->category->name }}</span>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <h3 class="section-heading">Abstrak</h3>
