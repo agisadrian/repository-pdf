@@ -5,10 +5,14 @@
 @section('content')
 
     <h1 class="page-title">Selamat Datang di Repository PDF</h1>
-    <p class="page-subtitle">Kumpulan dokumen skripsi, tesis, jurnal, dan laporan penelitian.</p>
+    <p class="page-subtitle">Kumpulan dokumen.</p>
 
     @if ($totalDocuments > 0)
-        <span class="hero-stat">{{ $totalDocuments }} dokumen tersedia</span>
+        <div class="hero-stats">
+            <span class="hero-stat">{{ $totalDocuments }} dokumen tersedia</span>
+            <span class="hero-stat">{{ number_format($totalViews) }} kali dilihat</span>
+            <span class="hero-stat">{{ number_format($totalDownloads) }} kali diunduh</span>
+        </div>
     @endif
 
     @if ($documents->isEmpty())
@@ -21,9 +25,12 @@
                 <a href="{{ url('/dokumen/' . $doc->slug) }}" class="document-card">
                     <div class="doc-cover">
                         @if ($doc->cover)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url($doc->cover) }}" alt="">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::url($doc->cover) }}" alt="Sampul dokumen {{ $doc->title }}" loading="lazy">
                         @else
                             <span class="doc-cover-placeholder">{{ substr($doc->title, 0, 1) }}</span>
+                        @endif
+                        @if ($doc->created_at && $doc->created_at->gt(now()->subDays(7)))
+                            <span class="badge-new">Baru</span>
                         @endif
                     </div>
                     <div class="doc-title">{{ $doc->title }}</div>

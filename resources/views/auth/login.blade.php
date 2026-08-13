@@ -37,9 +37,7 @@
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
 
-            <p class="auth-hint">
-                Coba pakai: <code>agisadrianh@gmail.com</code> / <code>agis12</code>
-            </p>
+           
         </div>
     </div>
 

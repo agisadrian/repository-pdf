@@ -1,0 +1,21 @@
+﻿# Proteksi tambahan buat hosting yang naruh SELURUH folder aplikasi (bukan cuma folder public/) langsung bisa diakses browser, seperti InfinityFree.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+<FilesMatch "\.(env|sqlite|sql|lock|log|yml|yaml|dist)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+RewriteEngine On
+RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)/ - [F,L]

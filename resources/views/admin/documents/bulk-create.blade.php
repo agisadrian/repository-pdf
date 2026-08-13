@@ -56,7 +56,8 @@
                 const row = document.createElement('div');
                 row.id = 'row-' + i;
                 row.className = 'bulk-row';
-                row.innerHTML = '<span class="bulk-row-name">' + file.name + '</span><span class="bulk-row-status">Menunggu</span>';
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                row.innerHTML = '<span class="bulk-row-name">' + file.name + ' <span class="bulk-row-size">(' + sizeMb + ' MB)</span></span><span class="bulk-row-status">Menunggu</span>';
                 progressList.appendChild(row);
             });
         });
@@ -121,13 +122,25 @@
                         body: formData,
                     });
 
-                    if (!res.ok) throw new Error('Upload gagal');
+                    if (!res.ok) {
+                        // Coba baca pesan error asli dari server (validasi Laravel, atau
+                        // status HTTP kayak 413 kalau ketolak duluan sama server/php.ini)
+                        let reason = 'HTTP ' + res.status;
+                        try {
+                            const errJson = await res.json();
+                            if (errJson.message) reason = errJson.message;
+                            if (errJson.errors && errJson.errors.pdf_file) reason = errJson.errors.pdf_file[0];
+                        } catch (parseErr) {
+                            if (res.status === 413) reason = 'File terlalu besar untuk server (413) — cek limit php.ini/webserver';
+                        }
+                        throw new Error(reason);
+                    }
 
                     const result = await res.json();
                     setStatus(i, 'Berhasil: "' + result.title + '"', false);
                     successCount++;
                 } catch (err) {
-                    setStatus(i, 'Gagal diupload', true);
+                    setStatus(i, 'Gagal: ' + err.message, true);
                     failCount++;
                 }
             }

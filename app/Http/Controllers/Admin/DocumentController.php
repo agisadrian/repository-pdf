@@ -27,6 +27,7 @@ class DocumentController extends Controller
         return view('admin.documents.index', [
             'documents' => $documents,
             'keyword' => $request->query('q'),
+            'categories' => Category::orderBy('name')->get(),
         ]);
     }
 
@@ -132,7 +133,7 @@ class DocumentController extends Controller
             ->with('success', 'Dokumen berhasil dihapus.');
     }
 
-    // Tampilkan halaman upload banyak dokumen sekaligus
+    // Upload banyak PDF sekaligus
     public function bulkCreate()
     {
         return view('admin.documents.bulk-create', [
@@ -145,9 +146,12 @@ class DocumentController extends Controller
     public function bulkStore(Request $request)
     {
         $request->validate([
-            'pdf_file' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'pdf_file' => ['required', 'file', 'mimes:pdf', 'max:102400'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'cover_auto' => ['nullable', 'string'],
+        ], [
+            'pdf_file.max' => 'File PDF maksimal 100MB.',
+            'pdf_file.mimes' => 'File harus berformat PDF.',
         ]);
 
         $file = $request->file('pdf_file');
@@ -191,6 +195,86 @@ class DocumentController extends Controller
         ]);
     }
 
+    // Update Kategori dan/atau Bulan untuk BANYAK dokumen sekaligus.
+    // Dipanggil via AJAX dari halaman Kelola Dokumen (checkbox + toolbar bulk edit).
+    // Nggak ada batas jumlah dokumen yang bisa diupdate sekaligus.
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'document_ids' => ['required', 'array', 'min:1'],
+            'document_ids.*' => ['integer', 'exists:documents,id'],
+            'category_id' => ['nullable', 'string'],
+            'month' => ['nullable', 'string'],
+        ]);
+
+        $ids = $request->input('document_ids');
+        $categoryInput = $request->input('category_id'); // '' / null = tidak diubah, 'none' = kosongkan, angka = id kategori
+        $monthInput = $request->input('month'); // '' / null = tidak diubah, 'none' = kosongkan, 1-12 = bulan
+
+        $updateData = [];
+
+        if (filled($categoryInput)) {
+            if ($categoryInput === 'none') {
+                $updateData['category_id'] = null;
+            } elseif (Category::where('id', $categoryInput)->exists()) {
+                $updateData['category_id'] = (int) $categoryInput;
+            } else {
+                return response()->json(['message' => 'Kategori yang dipilih tidak valid.'], 422);
+            }
+        }
+
+        if (filled($monthInput)) {
+            if ($monthInput === 'none') {
+                $updateData['month'] = null;
+            } elseif (is_numeric($monthInput) && $monthInput >= 1 && $monthInput <= 12) {
+                $updateData['month'] = (int) $monthInput;
+            } else {
+                return response()->json(['message' => 'Bulan yang dipilih tidak valid.'], 422);
+            }
+        }
+
+        if (empty($updateData)) {
+            return response()->json(['message' => 'Pilih dulu Kategori atau Bulan yang mau diterapkan.'], 422);
+        }
+
+        $count = Document::whereIn('id', $ids)->update($updateData);
+
+        return response()->json([
+            'message' => $count . ' dokumen berhasil diperbarui sekaligus.',
+            'count' => $count,
+        ]);
+    }
+
+    // Hapus BANYAK dokumen sekaligus (sekalian file PDF & cover-nya dari storage).
+    // Dipanggil via AJAX dari halaman Kelola Dokumen (checkbox + toolbar bulk edit).
+    // Nggak ada batas jumlah dokumen yang bisa dihapus sekaligus.
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'document_ids' => ['required', 'array', 'min:1'],
+            'document_ids.*' => ['integer', 'exists:documents,id'],
+        ]);
+
+        $documents = Document::whereIn('id', $request->input('document_ids'))->get();
+
+        foreach ($documents as $document) {
+            if ($document->pdf_file && $document->pdf_file !== 'placeholder.pdf') {
+                Storage::disk('public')->delete($document->pdf_file);
+            }
+
+            if ($document->cover) {
+                Storage::disk('public')->delete($document->cover);
+            }
+        }
+
+        $count = Document::whereIn('id', $documents->pluck('id'))->delete();
+
+        return response()->json([
+            'message' => $count . ' dokumen berhasil dihapus sekaligus.',
+            'count' => $count,
+        ]);
+    }
+
     // Validasi input form (dipakai bareng di store & update)
     // $pdfRequired: true di store (wajib upload), false di update (opsional, boleh tetap pakai file lama)
     private function validateData(Request $request, ?int $ignoreId = null, bool $pdfRequired = false): array
@@ -202,8 +286,9 @@ class DocumentController extends Controller
             'abstract' => ['nullable', 'string'],
             'keywords' => ['nullable', 'string', 'max:255'],
             'year' => ['nullable', 'integer', 'min:1900', 'max:' . (date('Y') + 1)],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'category_id' => ['nullable', 'exists:categories,id'],
-            'pdf_file' => [$pdfRequired ? 'required' : 'nullable', 'file', 'mimes:pdf', 'max:20480'],
+            'pdf_file' => [$pdfRequired ? 'required' : 'nullable', 'file', 'mimes:pdf', 'max:102400'],
             'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover_auto' => ['nullable', 'string'],
         ]);

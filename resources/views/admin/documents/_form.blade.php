@@ -22,6 +22,18 @@
     </div>
 
     <div class="form-group">
+        <label for="month">Bulan</label>
+        <select id="month" name="month" class="form-input">
+            <option value="">- Bulan -</option>
+            @foreach (\App\Models\Document::MONTH_NAMES as $num => $name)
+                <option value="{{ $num }}" @selected(old('month', $document->month ?? '') == $num)>
+                    {{ $name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="form-group">
         <label for="year">Tahun</label>
         <input type="number" id="year" name="year" value="{{ old('year', $document->year ?? '') }}" class="form-input">
     </div>
@@ -85,7 +97,7 @@
             File saat ini: {{ basename($document->pdf_file) }} &mdash; kosongkan kalau tidak mau ganti file.
         </p>
     @else
-        <p class="field-hint">Maksimal 20MB, format PDF.</p>
+        <p class="field-hint">Maksimal 100MB, format PDF.</p>
     @endif
 </div>
 

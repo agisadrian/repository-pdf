@@ -18,6 +18,8 @@ class HomeController extends Controller
         return view('home', [
             'documents' => $documents,
             'totalDocuments' => Document::count(),
+            'totalViews' => Document::sum('view_count'),
+            'totalDownloads' => Document::sum('download_count'),
         ]);
     }
 }

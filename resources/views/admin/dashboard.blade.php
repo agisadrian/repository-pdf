@@ -62,4 +62,79 @@
         @endif
     </div>
 
+    <div class="admin-panel-row">
+        <div class="admin-panel">
+            <div class="admin-panel-header">
+                <h3>Dokumen per Kategori</h3>
+            </div>
+
+            @if ($documentsPerCategory->isEmpty())
+                <p class="empty-hint">Belum ada kategori.</p>
+            @else
+                @php $maxCategoryCount = max($documentsPerCategory->max('documents_count'), 1); @endphp
+                <div class="bar-chart">
+                    @foreach ($documentsPerCategory as $category)
+                        <div class="bar-chart-row">
+                            <span class="bar-chart-label">{{ $category->name }}</span>
+                            <div class="bar-chart-track">
+                                <div class="bar-chart-fill" style="width: {{ $category->documents_count / $maxCategoryCount * 100 }}%"></div>
+                            </div>
+                            <span class="bar-chart-value">{{ $category->documents_count }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="admin-panel">
+            <div class="admin-panel-header">
+                <h3>Upload per Bulan (6 Bulan Terakhir)</h3>
+            </div>
+
+            @php $maxMonthCount = max($uploadsPerMonth->max('count'), 1); @endphp
+            <div class="bar-chart">
+                @foreach ($uploadsPerMonth as $month)
+                    <div class="bar-chart-row">
+                        <span class="bar-chart-label">{{ $month['label'] }}</span>
+                        <div class="bar-chart-track">
+                            <div class="bar-chart-fill bar-chart-fill-alt" style="width: {{ $month['count'] / $maxMonthCount * 100 }}%"></div>
+                        </div>
+                        <span class="bar-chart-value">{{ $month['count'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-panel">
+        <div class="admin-panel-header">
+            <h3>5 Dokumen Terpopuler</h3>
+        </div>
+
+        @if ($topDocuments->isEmpty())
+            <p class="empty-hint">Belum ada dokumen.</p>
+        @else
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Judul</th>
+                        <th>Kategori</th>
+                        <th>Dilihat</th>
+                        <th>Diunduh</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($topDocuments as $doc)
+                        <tr>
+                            <td>{{ $doc->title }}</td>
+                            <td>{{ $doc->category?->name ?? '-' }}</td>
+                            <td>{{ $doc->view_count }}</td>
+                            <td>{{ $doc->download_count }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
 @endsection

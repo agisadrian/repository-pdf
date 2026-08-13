@@ -43,12 +43,38 @@
                 </button>
             @endif
 
+            <div id="bulk-edit-bar" class="bulk-edit-bar" style="display:none;">
+                <span id="bulk-edit-count" class="bulk-edit-count"></span>
+
+                <select id="bulk-category" class="form-input bulk-edit-select">
+                    <option value="">Kategori: Tidak Diubah</option>
+                    <option value="none">Kategori: Kosongkan</option>
+                    @foreach ($categories as $category)
+                        <option value="{{ $category->id }}">Kategori: {{ $category->name }}</option>
+                    @endforeach
+                </select>
+
+                <select id="bulk-month" class="form-input bulk-edit-select">
+                    <option value="">Bulan: Tidak Diubah</option>
+                    <option value="none">Bulan: Kosongkan</option>
+                    @foreach (\App\Models\Document::MONTH_NAMES as $num => $name)
+                        <option value="{{ $num }}">Bulan: {{ $name }}</option>
+                    @endforeach
+                </select>
+
+                <button type="button" id="bulk-edit-apply" class="btn btn-primary btn-sm">Terapkan</button>
+                <button type="button" id="bulk-delete-apply" class="btn btn-danger btn-sm">Hapus Terpilih</button>
+                <button type="button" id="bulk-edit-clear" class="btn btn-secondary btn-sm">Batal Pilih</button>
+            </div>
+
             <table class="admin-table">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="select-all-checkbox"></th>
                         <th>Sampul</th>
                         <th>Judul</th>
                         <th>Kategori</th>
+                        <th>Bulan</th>
                         <th>Tahun</th>
                         <th>Aksi</th>
                     </tr>
@@ -56,6 +82,9 @@
                 <tbody>
                     @foreach ($documents as $doc)
                         <tr>
+                            <td>
+                                <input type="checkbox" class="row-checkbox" value="{{ $doc->id }}">
+                            </td>
                             <td>
                                 <img
                                     class="row-cover-thumb"
@@ -70,6 +99,7 @@
                             </td>
                             <td>{{ $doc->title }}</td>
                             <td>{{ $doc->category?->name ?? '-' }}</td>
+                            <td>{{ $doc->month_name ?? '-' }}</td>
                             <td>{{ $doc->year ?? '-' }}</td>
                             <td class="table-actions">
                                 <a href="{{ route('admin.documents.edit', $doc) }}" class="btn btn-sm btn-secondary">Edit</a>
@@ -197,6 +227,143 @@
                 generateAllBtn.style.display = 'none';
             });
         }
+
+        // ===== Bulk edit: pilih banyak dokumen, set Kategori/Bulan sekaligus =====
+        (function () {
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            const rowCheckboxes = Array.from(document.querySelectorAll('.row-checkbox'));
+            const bulkBar = document.getElementById('bulk-edit-bar');
+            const bulkCount = document.getElementById('bulk-edit-count');
+            const bulkCategory = document.getElementById('bulk-category');
+            const bulkMonth = document.getElementById('bulk-month');
+            const bulkApplyBtn = document.getElementById('bulk-edit-apply');
+            const bulkDeleteBtn = document.getElementById('bulk-delete-apply');
+            const bulkClearBtn = document.getElementById('bulk-edit-clear');
+
+            if (!bulkBar || rowCheckboxes.length === 0) return;
+
+            function getCheckedIds() {
+                return rowCheckboxes.filter(function (cb) { return cb.checked; })
+                    .map(function (cb) { return cb.value; });
+            }
+
+            function updateBulkBar() {
+                const ids = getCheckedIds();
+                if (ids.length > 0) {
+                    bulkBar.style.display = 'flex';
+                    bulkCount.textContent = ids.length + ' dokumen dipilih';
+                } else {
+                    bulkBar.style.display = 'none';
+                }
+
+                selectAllCheckbox.checked = ids.length === rowCheckboxes.length;
+                selectAllCheckbox.indeterminate = ids.length > 0 && ids.length < rowCheckboxes.length;
+            }
+
+            rowCheckboxes.forEach(function (cb) {
+                cb.addEventListener('change', updateBulkBar);
+            });
+
+            selectAllCheckbox.addEventListener('change', function () {
+                rowCheckboxes.forEach(function (cb) { cb.checked = selectAllCheckbox.checked; });
+                updateBulkBar();
+            });
+
+            bulkClearBtn.addEventListener('click', function () {
+                rowCheckboxes.forEach(function (cb) { cb.checked = false; });
+                updateBulkBar();
+            });
+
+            bulkApplyBtn.addEventListener('click', async function () {
+                const ids = getCheckedIds();
+                const categoryValue = bulkCategory.value;
+                const monthValue = bulkMonth.value;
+
+                if (ids.length === 0) return;
+
+                if (categoryValue === '' && monthValue === '') {
+                    alert('Pilih dulu Kategori dan/atau Bulan yang mau diterapkan.');
+                    return;
+                }
+
+                const confirmMsg = 'Terapkan perubahan ini ke ' + ids.length + ' dokumen yang dipilih?';
+                if (!confirm(confirmMsg)) return;
+
+                bulkApplyBtn.disabled = true;
+                const originalText = bulkApplyBtn.textContent;
+                bulkApplyBtn.textContent = 'Memproses...';
+
+                try {
+                    const res = await fetch('{{ route('admin.documents.bulkUpdate') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            document_ids: ids,
+                            category_id: categoryValue,
+                            month: monthValue,
+                        }),
+                    });
+
+                    const result = await res.json();
+
+                    if (!res.ok) {
+                        alert(result.message || 'Gagal memperbarui dokumen.');
+                        return;
+                    }
+
+                    location.reload();
+                } catch (err) {
+                    console.error(err);
+                    alert('Terjadi kesalahan, coba lagi.');
+                } finally {
+                    bulkApplyBtn.disabled = false;
+                    bulkApplyBtn.textContent = originalText;
+                }
+            });
+
+            bulkDeleteBtn.addEventListener('click', async function () {
+                const ids = getCheckedIds();
+                if (ids.length === 0) return;
+
+                const confirmMsg = 'Yakin mau HAPUS ' + ids.length + ' dokumen yang dipilih? File PDF & sampulnya juga ikut kehapus dan nggak bisa dibalikin lagi.';
+                if (!confirm(confirmMsg)) return;
+
+                bulkDeleteBtn.disabled = true;
+                const originalText = bulkDeleteBtn.textContent;
+                bulkDeleteBtn.textContent = 'Menghapus...';
+
+                try {
+                    const res = await fetch('{{ route('admin.documents.bulkDestroy') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ document_ids: ids }),
+                    });
+
+                    const result = await res.json();
+
+                    if (!res.ok) {
+                        alert(result.message || 'Gagal menghapus dokumen.');
+                        return;
+                    }
+
+                    location.reload();
+                } catch (err) {
+                    console.error(err);
+                    alert('Terjadi kesalahan, coba lagi.');
+                } finally {
+                    bulkDeleteBtn.disabled = false;
+                    bulkDeleteBtn.textContent = originalText;
+                }
+            });
+        })();
     </script>
 
 @endsection
