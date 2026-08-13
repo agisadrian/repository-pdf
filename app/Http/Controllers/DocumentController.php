@@ -33,6 +33,71 @@ class DocumentController extends Controller
         ]);
     }
 
+    // Bikin query "boolean mode" buat MATCH() AGAINST(), dipake bareng oleh suggest() dan search().
+    // Tiap kata dikasih + (wajib ada) dan * (biar cocok juga walau kata belum selesai diketik).
+    private function buildBooleanFullTextQuery(string $keyword): string
+    {
+        return collect(preg_split('/\s+/', trim($keyword)))
+            ->map(fn ($word) => preg_replace('/[+\-><()~*"@]/', '', $word))
+            ->filter(fn ($word) => $word !== '')
+            ->map(fn ($word) => '+' . $word . '*')
+            ->implode(' ');
+    }
+
+    // Endpoint autocomplete: dipanggil AJAX pas orang lagi ngetik di kolom cari.
+    // Balikin JSON ringan (cuma judul, slug, cover) -- bukan hasil pencarian lengkap.
+    public function suggest(Request $request)
+    {
+        $keyword = trim((string) $request->query('q', ''));
+
+        // Kurang dari 2 karakter: jangan query dulu, hasilnya bakal terlalu luas/berat
+        if (mb_strlen($keyword) < 2) {
+            return response()->json([]);
+        }
+
+        // FULLTEXT (MATCH AGAINST) butuh minimal 3 karakter per kata biar match ke index-nya
+        // (bawaan MySQL/InnoDB: innodb_ft_min_token_size = 3). Buat 2 karakter, fallback ke LIKE
+        // di judul doang -- tetep ringan karena cuma nyentuh 1 kolom pendek, bukan pdf_text.
+        if (mb_strlen($keyword) < 3) {
+            $documents = Document::query()
+                ->where('title', 'like', $keyword . '%')
+                ->orderByDesc('view_count')
+                ->limit(8)
+                ->get(['slug', 'title', 'cover', 'author']);
+
+            return response()->json($this->formatSuggestions($documents));
+        }
+
+        // 3+ karakter: pake FULLTEXT index yang udah ada di migration (title, abstract,
+        // keywords, pdf_text sekaligus) -- jadi autocomplete ini juga nyentuh isi PDF,
+        // tapi tetep cepat karena baca dari index, bukan scan LIKE '%...%' di kolom longtext.
+        $booleanQuery = $this->buildBooleanFullTextQuery($keyword);
+
+        // Kalau setelah dibersihin ternyata kosong semua (keyword-nya cuma simbol aneh),
+        // jangan lanjut query FULLTEXT -- balikin kosong aja daripada bikin syntax error MySQL
+        if ($booleanQuery === '') {
+            return response()->json([]);
+        }
+
+        $documents = Document::query()
+            ->whereFullText(['title', 'abstract', 'keywords', 'pdf_text'], $booleanQuery, ['mode' => 'boolean'])
+            ->orderByDesc('view_count')
+            ->limit(8)
+            ->get(['slug', 'title', 'cover', 'author']);
+
+        return response()->json($this->formatSuggestions($documents));
+    }
+
+    private function formatSuggestions($documents)
+    {
+        return $documents->map(fn ($doc) => [
+            'title' => $doc->title,
+            'author' => $doc->author,
+            'url' => route('document.show', $doc->slug),
+            'cover' => $doc->cover ? Storage::url($doc->cover) : null,
+        ]);
+    }
+
     // Halaman pencarian dokumen — nyari di judul, abstrak, keyword, isi teks PDF,
     // bisa difilter per kategori, tahun, bulan, diurutkan, dikelompokkan per bulan-tahun terbit
     public function search(Request $request)
@@ -45,12 +110,28 @@ class DocumentController extends Controller
 
         $documents = Document::with(['category'])
             ->when($keyword, function ($query, $keyword) {
-                $query->where(function ($q) use ($keyword) {
-                    $q->where('title', 'like', '%' . $keyword . '%')
-                        ->orWhere('abstract', 'like', '%' . $keyword . '%')
-                        ->orWhere('keywords', 'like', '%' . $keyword . '%')
-                        ->orWhere('pdf_text', 'like', '%' . $keyword . '%');
-                });
+                $keyword = trim($keyword);
+
+                // Kata pendek (di bawah 3 huruf): FULLTEXT nggak bakal match ke index-nya,
+                // jadi tetep pake LIKE lama -- di skala kecil ini masih cukup cepat.
+                if (mb_strlen($keyword) < 3) {
+                    $query->where(function ($q) use ($keyword) {
+                        $q->where('title', 'like', '%' . $keyword . '%')
+                            ->orWhere('abstract', 'like', '%' . $keyword . '%')
+                            ->orWhere('keywords', 'like', '%' . $keyword . '%')
+                            ->orWhere('pdf_text', 'like', '%' . $keyword . '%');
+                    });
+
+                    return;
+                }
+
+                // 3+ huruf: pake FULLTEXT index (MATCH AGAINST), baca dari index bukan scan
+                // ulang tiap baris -- jauh lebih ringan begitu jumlah/isi dokumen makin banyak.
+                $booleanQuery = $this->buildBooleanFullTextQuery($keyword);
+
+                if ($booleanQuery !== '') {
+                    $query->whereFullText(['title', 'abstract', 'keywords', 'pdf_text'], $booleanQuery, ['mode' => 'boolean']);
+                }
             })
             ->when($categoryId, function ($query, $categoryId) {
                 $query->where('category_id', $categoryId);

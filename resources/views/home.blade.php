@@ -5,7 +5,7 @@
 @section('content')
 
     <h1 class="page-title">Selamat Datang di Repository PDF</h1>
-    <p class="page-subtitle">Kumpulan dokumen.</p>
+    <p class="page-subtitle">Kumpulan dokumen pdf.</p>
 
     @if ($totalDocuments > 0)
         <div class="hero-stats">

@@ -15,6 +15,7 @@ Route::get('/kategori', [CategoryController::class, 'index'])->name('category.in
 
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
+Route::get('/cari/suggest', [DocumentController::class, 'suggest'])->name('document.suggest');
 Route::get('/cari', [DocumentController::class, 'search'])->name('document.search');
 Route::get('/dokumen/{slug}', [DocumentController::class, 'show'])->name('document.show');
 Route::get('/dokumen/{slug}/download', [DocumentController::class, 'download'])->name('document.download');

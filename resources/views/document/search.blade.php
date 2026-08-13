@@ -8,13 +8,22 @@
     <p class="page-subtitle">Cari berdasarkan judul, isi dokumen, atau filter per kategori.</p>
 
     <form action="{{ url('/cari') }}" method="GET" class="search-filter-form">
-        <input
-            type="text"
-            name="q"
-            value="{{ $keyword }}"
-            placeholder="Ketik judul atau isi dokumen..."
-            class="search-input"
-        >
+        <div class="search-input-wrap">
+            <input
+                type="text"
+                name="q"
+                id="search-autocomplete-input"
+                value="{{ $keyword }}"
+                placeholder="Ketik judul atau isi dokumen..."
+                class="search-input"
+                autocomplete="off"
+                role="combobox"
+                aria-expanded="false"
+                aria-autocomplete="list"
+                aria-controls="search-autocomplete-list"
+            >
+            <ul id="search-autocomplete-list" class="search-autocomplete-list" role="listbox" hidden></ul>
+        </div>
 
         <select name="category" class="form-input search-filter-select">
             <option value="">Semua Kategori</option>
@@ -125,5 +134,135 @@
             {{ $documents->links() }}
         </div>
     @endif
+
+    <script>
+        (function () {
+            var input = document.getElementById('search-autocomplete-input');
+            var list = document.getElementById('search-autocomplete-list');
+
+            if (!input || !list) return;
+
+            var debounceTimer = null;
+            var currentController = null;
+            var activeIndex = -1;
+            var items = [];
+
+            function closeList() {
+                list.hidden = true;
+                list.innerHTML = '';
+                input.setAttribute('aria-expanded', 'false');
+                activeIndex = -1;
+                items = [];
+            }
+
+            function escapeHtml(str) {
+                var div = document.createElement('div');
+                div.textContent = str || '';
+                return div.innerHTML;
+            }
+
+            function renderList(results) {
+                items = results;
+                activeIndex = -1;
+
+                if (!results.length) {
+                    closeList();
+                    return;
+                }
+
+                list.innerHTML = results.map(function (doc, i) {
+                    return '' +
+                        '<li role="option" id="ac-item-' + i + '" data-index="' + i + '">' +
+                        '<a href="' + doc.url + '" class="ac-item">' +
+                        (doc.cover
+                            ? '<img src="' + doc.cover + '" alt="" loading="lazy">'
+                            : '<span class="ac-item-placeholder">' + escapeHtml(doc.title.charAt(0)) + '</span>') +
+                        '<span class="ac-item-text">' +
+                        '<span class="ac-item-title">' + escapeHtml(doc.title) + '</span>' +
+                        '<span class="ac-item-author">' + escapeHtml(doc.author || 'Penulis tidak diketahui') + '</span>' +
+                        '</span>' +
+                        '</a>' +
+                        '</li>';
+                }).join('');
+
+                list.hidden = false;
+                input.setAttribute('aria-expanded', 'true');
+            }
+
+            function setActive(index) {
+                var options = list.querySelectorAll('li');
+                options.forEach(function (el) { el.classList.remove('is-active'); });
+
+                if (index >= 0 && index < options.length) {
+                    options[index].classList.add('is-active');
+                    input.setAttribute('aria-activedescendant', 'ac-item-' + index);
+                    activeIndex = index;
+                } else {
+                    input.removeAttribute('aria-activedescendant');
+                    activeIndex = -1;
+                }
+            }
+
+            function fetchSuggestions(query) {
+                if (currentController) {
+                    currentController.abort();
+                }
+                currentController = new AbortController();
+
+                fetch('{{ url('/cari/suggest') }}?q=' + encodeURIComponent(query), {
+                    signal: currentController.signal,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(function (res) { return res.ok ? res.json() : []; })
+                    .then(function (data) { renderList(data || []); })
+                    .catch(function (err) {
+                        if (err.name !== 'AbortError') closeList();
+                    });
+            }
+
+            input.addEventListener('input', function () {
+                var query = input.value.trim();
+
+                clearTimeout(debounceTimer);
+
+                if (query.length < 2) {
+                    closeList();
+                    return;
+                }
+
+                // Debounce 300ms -- nunggu orang berhenti ngetik dulu sebelum nembak request,
+                // biar nggak query tiap 1 huruf diketik
+                debounceTimer = setTimeout(function () {
+                    fetchSuggestions(query);
+                }, 300);
+            });
+
+            input.addEventListener('keydown', function (e) {
+                if (list.hidden) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActive(Math.min(activeIndex + 1, items.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActive(Math.max(activeIndex - 1, -1));
+                } else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && items[activeIndex]) {
+                        e.preventDefault();
+                        window.location.href = items[activeIndex].url;
+                    }
+                    // kalau nggak ada item aktif, biarin form submit normal (pencarian biasa)
+                } else if (e.key === 'Escape') {
+                    closeList();
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!input.contains(e.target) && !list.contains(e.target)) {
+                    closeList();
+                }
+            });
+        })();
+    </script>
 
 @endsection

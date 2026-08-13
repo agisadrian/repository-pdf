@@ -4,12 +4,17 @@
     padding: 0;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #f5f6fa;
     color: #222;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
 }
 
 a {
@@ -542,10 +547,16 @@ a {
     align-items: center;
 }
 
-.search-filter-form .search-input {
+.search-filter-form .search-input-wrap {
+    position: relative;
     flex: 1;
     min-width: 200px;
     max-width: 400px;
+}
+
+.search-filter-form .search-input-wrap .search-input {
+    width: 100%;
+    max-width: none;
 }
 
 .search-filter-select {
@@ -557,6 +568,81 @@ a {
 .search-filter-form .search-filter-select {
     width: 160px;
     flex: 0 1 160px;
+}
+
+/* Dropdown saran autocomplete di kolom cari */
+.search-autocomplete-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    list-style: none;
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.search-autocomplete-list li {
+    border-radius: 8px;
+}
+
+.search-autocomplete-list li.is-active,
+.search-autocomplete-list li:hover {
+    background: #f1f5f9;
+}
+
+.ac-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.ac-item img,
+.ac-item-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.ac-item-placeholder {
+    background: #eef0f4;
+    color: #a5adc0;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ac-item-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ac-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ac-item-author {
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .search-sort-bar {
@@ -1116,4 +1202,248 @@ textarea.form-input {
     justify-content: center;
     gap: 12px;
     flex-wrap: wrap;
+}
+
+/* =========================================================
+   RESPONSIVE / MOBILE
+   Semua rule di bawah ini dibungkus @media (max-width) jadi
+   TIDAK mengubah tampilan desktop sama sekali — cuma aktif
+   di layar sempit (tablet & handphone).
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    .container {
+        padding: 0 16px;
+    }
+
+    .content {
+        padding: 24px 16px;
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+
+    /* Navbar: brand + menu ditumpuk biar nggak overflow ke samping */
+    .navbar {
+        padding: 12px 0;
+    }
+
+    .navbar-inner {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+
+    .navbar nav {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 16px;
+    }
+
+    .navbar nav a {
+        margin-left: 0;
+        font-size: 14px;
+    }
+
+    .logout-form {
+        margin-left: 0;
+    }
+
+    /* Grid dokumen & kategori: 1 kolom biar kartu nggak kepepet */
+    .document-grid,
+    .category-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    /* Detail dokumen: sampul + info ditumpuk vertikal */
+    .detail-card {
+        padding: 20px;
+    }
+
+    .detail-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 14px;
+    }
+
+    .detail-cover {
+        width: 130px;
+        height: 175px;
+    }
+
+    .detail-meta {
+        justify-content: center;
+        gap: 12px 20px;
+    }
+
+    .detail-actions,
+    .detail-share {
+        justify-content: center;
+    }
+
+    .pdf-viewer-iframe {
+        height: 480px;
+    }
+
+    /* Form pencarian: filter ditumpuk full-width, lebih enak dipencet di HP */
+    .search-filter-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-filter-form .search-input-wrap {
+        max-width: none;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .search-filter-form .search-filter-select {
+        width: 100%;
+        flex: 1 1 auto;
+    }
+
+    .search-filter-form .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .search-sort-bar {
+        flex-wrap: wrap;
+    }
+
+    .search-sort-bar .search-filter-select {
+        width: auto;
+        flex: 1;
+    }
+
+    /* Admin: sidebar pindah ke atas, jadi menu horizontal yang bisa discroll */
+    .admin-layout {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+    }
+
+    .admin-main {
+        width: 100%;
+    }
+
+    .admin-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-nav a {
+        white-space: nowrap;
+    }
+
+    /* Tabel admin: dibiarkan lebar aslinya, tapi bungkusnya bisa discroll
+       ke samping supaya kolom nggak kepepet/berantakan */
+    .admin-panel {
+        overflow-x: auto;
+    }
+
+    .admin-table {
+        min-width: 640px;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        white-space: nowrap;
+    }
+
+    .admin-table td.table-actions,
+    .admin-table .table-actions {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+
+    .admin-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-panel-header .table-actions {
+        flex-direction: column;
+    }
+
+    .admin-panel-header .table-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .bulk-edit-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bulk-edit-select,
+    .bulk-edit-bar .btn {
+        width: 100%;
+    }
+
+    /* CRUD form: dua kolom jadi satu kolom */
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-card {
+        padding: 24px;
+    }
+
+    .auth-wrap {
+        padding-top: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .brand {
+        font-size: 18px;
+    }
+
+    .page-title {
+        font-size: 20px;
+    }
+
+    .detail-card {
+        padding: 16px;
+    }
+
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .bar-chart-row {
+        grid-template-columns: 64px 1fr 26px;
+        gap: 8px;
+    }
+
+    .bar-chart-label {
+        font-size: 12px;
+    }
+
+    .error-code {
+        font-size: 64px;
+    }
+
+    .detail-actions .btn,
+    .detail-actions .page-count-hint {
+        width: 100%;
+        text-align: center;
+    }
+
+    .detail-share {
+        flex-direction: column;
+        align-items: stretch;
+    }
 }
