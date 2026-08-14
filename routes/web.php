@@ -15,8 +15,8 @@ Route::get('/kategori', [CategoryController::class, 'index'])->name('category.in
 
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
-Route::get('/cari/suggest', [DocumentController::class, 'suggest'])->name('document.suggest');
-Route::get('/cari', [DocumentController::class, 'search'])->name('document.search');
+Route::get('/cari/suggest', [DocumentController::class, 'suggest'])->name('document.suggest')->middleware('throttle:30,1');
+Route::get('/cari', [DocumentController::class, 'search'])->name('document.search')->middleware('throttle:60,1');
 Route::get('/dokumen/{slug}', [DocumentController::class, 'show'])->name('document.show');
 Route::get('/dokumen/{slug}/download', [DocumentController::class, 'download'])->name('document.download');
 Route::get('/dokumen/{slug}/preview', [DocumentController::class, 'preview'])->name('document.preview');
