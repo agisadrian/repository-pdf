@@ -1,0 +1,54 @@
+name: Tests
+
+# Kapan workflow ini jalan otomatis:
+# - tiap kali ada push ke branch main
+# - tiap kali ada Pull Request yang menarget branch main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Ambil kode dari repo
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      # Install PHP + extension yang dibutuhkan Laravel
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, fileinfo, zip, gd
+          coverage: none
+
+      # Install dependency PHP (composer)
+      - name: Install dependency Composer
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # Siapin .env buat testing
+      - name: Siapin .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Install & build asset frontend (biar kalau ada yang rusak, ketauan juga)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependency Node & build asset
+        run: |
+          npm ci
+          npm run build
+
+      # Jalanin seluruh test suite (pakai SQLite in-memory sesuai phpunit.xml,
+      # jadi 2 test fulltext search bakal ke-skip otomatis - itu normal)
+      - name: Jalanin test
+        run: php artisan test
