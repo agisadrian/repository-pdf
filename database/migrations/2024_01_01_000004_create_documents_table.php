@@ -29,10 +29,16 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
-
-            // index untuk pencarian judul & full-text search sederhana
-            $table->fullText(['title', 'abstract', 'keywords', 'pdf_text']);
         });
+
+        // index full-text buat pencarian judul, abstrak, keyword, & isi PDF.
+        // Cuma didukung MySQL/MariaDB/PostgreSQL -- di-skip di SQLite (misal
+        // waktu testing) supaya migration nggak gagal total gara-gara ini.
+        if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb', 'pgsql'])) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->fullText(['title', 'abstract', 'keywords', 'pdf_text']);
+            });
+        }
     }
 
     public function down(): void

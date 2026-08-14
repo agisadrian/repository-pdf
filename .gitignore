@@ -24,3 +24,7 @@ Homestead.yaml
 Thumbs.db
 *.bak
 backup-sebelum-install-*/
+*.sqlite
+*.sqlite3
+/database/*.sqlite
+/repository_pdf

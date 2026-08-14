@@ -120,7 +120,17 @@
                         <div class="doc-meta">{{ $doc->author ?? 'Penulis tidak diketahui' }} &middot; {{ $doc->period_label }}</div>
                         @php $snippet = $keyword ? $doc->searchSnippet($keyword) : null; @endphp
                         @if ($snippet)
-                            <p class="doc-snippet">{!! $snippet !!}</p>
+                            <div class="doc-snippet-wrap">
+                                <p class="doc-snippet">{!! $snippet !!}</p>
+                                {{-- Muncul cuma pas kartu ini di-hover, dan cuma kalau ada 2+ kata kunci
+                                     ke-highlight di snippet ini -- biar bisa loncat antar kemunculan
+                                     tanpa ganggu kartu lain --}}
+                                <div class="snippet-nav" hidden>
+                                    <button type="button" class="snippet-nav-btn snippet-nav-prev" title="Sebelumnya" aria-label="Kata kunci sebelumnya">&#9650;</button>
+                                    <span class="snippet-nav-count"></span>
+                                    <button type="button" class="snippet-nav-btn snippet-nav-next" title="Berikutnya" aria-label="Kata kunci berikutnya">&#9660;</button>
+                                </div>
+                            </div>
                         @endif
                         @if ($doc->category)
                             <span class="badge">{{ $doc->category->name }}</span>
@@ -134,6 +144,55 @@
             {{ $documents->links() }}
         </div>
     @endif
+
+    {{-- Navigasi per kartu: kalau snippet sebuah kartu punya 2+ kata kunci ke-highlight,
+         munculin panah kecil pas kartu itu di-hover buat gantian nyorot kemunculannya --}}
+    <script>
+        (function () {
+            var wraps = document.querySelectorAll('.doc-snippet-wrap');
+
+            wraps.forEach(function (wrap) {
+                var marks = Array.prototype.slice.call(wrap.querySelectorAll('.doc-snippet mark'));
+                var nav = wrap.querySelector('.snippet-nav');
+
+                if (!nav) return;
+
+                // Cuma tampilin navigasi kalau kata kuncinya muncul lebih dari 1 kali di snippet ini
+                if (marks.length < 2) {
+                    nav.remove();
+                    return;
+                }
+
+                var currentIndex = 0;
+                marks[0].classList.add('mark-active');
+
+                var countEl = nav.querySelector('.snippet-nav-count');
+                countEl.textContent = '1/' + marks.length;
+                nav.hidden = false;
+
+                function goTo(index) {
+                    marks[currentIndex].classList.remove('mark-active');
+                    currentIndex = (index + marks.length) % marks.length;
+                    marks[currentIndex].classList.add('mark-active');
+                    countEl.textContent = (currentIndex + 1) + '/' + marks.length;
+                    marks[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+
+                // stopPropagation + preventDefault penting: snippet-nav ini duduk di dalam <a>
+                // kartu dokumen, jadi tanpa ini klik tombolnya bakal ikut buka halaman dokumen
+                nav.querySelector('.snippet-nav-prev').addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goTo(currentIndex - 1);
+                });
+                nav.querySelector('.snippet-nav-next').addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goTo(currentIndex + 1);
+                });
+            });
+        })();
+    </script>
 
     <script>
         (function () {

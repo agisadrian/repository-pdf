@@ -99,49 +99,130 @@ class Document extends Model
         return blank($this->abstract) && filled($this->display_abstract);
     }
 
-    // Ambil potongan teks di sekitar kata kunci yang cocok (dari isi PDF, abstrak,
-    // atau keyword), dengan kata kuncinya di-highlight <mark>. Dipakai di hasil pencarian,
-    // mirip cuplikan hasil Google Search. Return HTML string (aman, sudah di-escape),
-    // atau null kalau tidak ada kecocokan / tidak ada kata kunci.
-    public function searchSnippet(?string $keyword, int $contextLength = 180): ?string
+    // Ambil potongan teks (dari isi PDF, abstrak, atau keyword) yang paling banyak memuat
+    // kata-kata kunci yang cocok, dengan tiap kata kuncinya di-highlight <mark>. Dipakai di
+    // hasil pencarian, mirip cuplikan hasil Google Search.
+    //
+    // PENTING: sejak pencarian dokumen (lihat DocumentController::search()) memakai MySQL
+    // FULLTEXT boolean mode -- yang mensyaratkan SEMUA kata kunci ada di teks TAPI TIDAK
+    // HARUS bersebelahan/nempel jadi satu frasa -- method ini ikut mencari kata SATU PER
+    // SATU (bukan mencari "kata kunci lengkap" sebagai satu frasa utuh), lalu memilih jendela
+    // teks yang memuat kata-kata berbeda paling banyak. Kalau tetap mencari sebagai frasa
+    // utuh, banyak dokumen yang valid cocok di pencarian akan gagal dapat cuplikan (snippet-
+    // nya kosong) walau sebenarnya semua kata kuncinya ada, cuma di lokasi terpisah.
+    public function searchSnippet(?string $keyword, int $contextLength = 220): ?string
     {
         if (blank($keyword)) {
             return null;
         }
 
-        // Urutan prioritas: isi PDF dulu (paling informatif), baru abstrak, baru keyword
+        // Pecah kata kunci jadi kata-kata terpisah, dengan cara yang SAMA seperti
+        // DocumentController::buildBooleanFullTextQuery(), biar konsisten dengan kata
+        // apa saja yang sebenarnya dipakai buat mencocokkan dokumen ini di pencarian.
+        $words = collect(preg_split('/\s+/u', trim($keyword)))
+            ->map(fn ($w) => preg_replace('/[+\-><()~*"@]/u', '', $w))
+            ->filter(fn ($w) => $w !== '')
+            ->values();
+
+        if ($words->isEmpty()) {
+            return null;
+        }
+
+        $bestField = null;
+        $bestMatches = [];
+
+        // Urutan prioritas field: isi PDF dulu (paling informatif), baru abstrak, baru keyword
         foreach ([$this->pdf_text, $this->abstract, $this->keywords] as $field) {
             if (blank($field)) {
                 continue;
             }
 
-            $position = mb_stripos($field, $keyword);
+            // Rapikan semua jenis spasi (spasi biasa, non-breaking space, tab, baris baru
+            // -- sering campur aduk di hasil ekstraksi teks PDF) jadi satu spasi biasa
+            $normalized = preg_replace('/[\s\x{00A0}\x{200B}]+/u', ' ', $field);
 
-            if ($position === false) {
+            $matches = [];
+
+            foreach ($words as $wordIndex => $word) {
+                $offset = 0;
+
+                // Cari SEMUA kemunculan kata ini (bukan cuma yang pertama), biar bisa
+                // milih jendela cuplikan yang paling banyak memuat kata kunci berbeda
+                while (($pos = mb_stripos($normalized, $word, $offset)) !== false) {
+                    $matches[] = ['pos' => $pos, 'word' => $wordIndex];
+                    $offset = $pos + 1;
+
+                    if (count($matches) > 200) {
+                        break 2; // jaga-jaga biar nggak berat di dokumen yang sangat panjang
+                    }
+                }
+            }
+
+            if (empty($matches)) {
                 continue;
             }
 
-            $start = max(0, $position - intdiv($contextLength, 2));
-            $raw = mb_substr($field, $start, $contextLength);
+            $distinctWords = collect($matches)->pluck('word')->unique()->count();
+            $bestDistinctSoFar = $bestMatches === [] ? -1 : collect($bestMatches)->pluck('word')->unique()->count();
 
-            // Hasil ekstraksi teks PDF sering berantakan (baris baru, spasi ganda) — rapikan dulu
-            $raw = trim(preg_replace('/\s+/u', ' ', $raw));
+            if ($distinctWords > $bestDistinctSoFar) {
+                $bestField = $normalized;
+                $bestMatches = $matches;
+            }
 
-            $prefix = $start > 0 ? '&hellip; ' : '';
-            $suffix = ($start + $contextLength) < mb_strlen($field) ? ' &hellip;' : '';
+            // Field ini sudah memuat SEMUA kata kunci? nggak perlu cek field lain lagi
+            if ($distinctWords === $words->count()) {
+                break;
+            }
+        }
 
-            // Escape dulu (isi PDF adalah teks mentah, bukan HTML tepercaya), baru highlight
-            $escaped = e($raw);
-            $highlighted = preg_replace(
-                '/(' . preg_quote(e($keyword), '/') . ')/iu',
+        if ($bestField === null) {
+            return null;
+        }
+
+        // Cari jendela (window) sepanjang $contextLength karakter yang memuat kata kunci
+        // BERBEDA paling banyak, pakai teknik sliding window dua pointer
+        usort($bestMatches, fn ($a, $b) => $a['pos'] <=> $b['pos']);
+
+        $windowStart = $bestMatches[0]['pos'];
+        $bestScore = -1;
+        $left = 0;
+
+        foreach ($bestMatches as $right => $match) {
+            while ($match['pos'] - $bestMatches[$left]['pos'] > $contextLength) {
+                $left++;
+            }
+
+            $distinctInWindow = collect(array_slice($bestMatches, $left, $right - $left + 1))
+                ->pluck('word')
+                ->unique()
+                ->count();
+
+            if ($distinctInWindow > $bestScore) {
+                $bestScore = $distinctInWindow;
+                $windowStart = $bestMatches[$left]['pos'];
+            }
+        }
+
+        $start = max(0, $windowStart - 40);
+        $raw = trim(mb_substr($bestField, $start, $contextLength));
+
+        $prefix = $start > 0 ? '&hellip; ' : '';
+        $suffix = ($start + $contextLength) < mb_strlen($bestField) ? ' &hellip;' : '';
+
+        // Escape dulu (isi PDF adalah teks mentah, bukan HTML tepercaya), baru highlight
+        // TIAP kata kunci satu-satu (bisa lebih dari satu kata yang ke-highlight di 1 cuplikan)
+        $escaped = e($raw);
+
+        foreach ($words as $word) {
+            $escaped = preg_replace(
+                '/(' . preg_quote(e($word), '/') . ')/iu',
                 '<mark>$1</mark>',
                 $escaped
             );
-
-            return $prefix . $highlighted . $suffix;
         }
 
-        return null;
+        return $prefix . $escaped . $suffix;
     }
 
     // Scope untuk pencarian judul + full-text sederhana
