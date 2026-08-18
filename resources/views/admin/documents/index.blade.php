@@ -12,9 +12,6 @@
         </div>
     </div>
 
-    @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
 
     <div id="cover-batch-alert" class="alert alert-success" style="display:none;"></div>
 
@@ -59,6 +56,14 @@
                     <option value="none">Bulan: Kosongkan</option>
                     @foreach (\App\Models\Document::MONTH_NAMES as $num => $name)
                         <option value="{{ $num }}">Bulan: {{ $name }}</option>
+                    @endforeach
+                </select>
+
+                <select id="bulk-year" class="form-input bulk-edit-select">
+                    <option value="">Tahun: Tidak Diubah</option>
+                    <option value="none">Tahun: Kosongkan</option>
+                    @foreach ($years as $y)
+                        <option value="{{ $y }}">Tahun: {{ $y }}</option>
                     @endforeach
                 </select>
 
@@ -236,6 +241,7 @@
             const bulkCount = document.getElementById('bulk-edit-count');
             const bulkCategory = document.getElementById('bulk-category');
             const bulkMonth = document.getElementById('bulk-month');
+            const bulkYear = document.getElementById('bulk-year');
             const bulkApplyBtn = document.getElementById('bulk-edit-apply');
             const bulkDeleteBtn = document.getElementById('bulk-delete-apply');
             const bulkClearBtn = document.getElementById('bulk-edit-clear');
@@ -278,11 +284,12 @@
                 const ids = getCheckedIds();
                 const categoryValue = bulkCategory.value;
                 const monthValue = bulkMonth.value;
+                const yearValue = bulkYear.value;
 
                 if (ids.length === 0) return;
 
-                if (categoryValue === '' && monthValue === '') {
-                    alert('Pilih dulu Kategori dan/atau Bulan yang mau diterapkan.');
+                if (categoryValue === '' && monthValue === '' && yearValue === '') {
+                    alert('Pilih dulu Kategori, Bulan, dan/atau Tahun yang mau diterapkan.');
                     return;
                 }
 
@@ -305,6 +312,7 @@
                             document_ids: ids,
                             category_id: categoryValue,
                             month: monthValue,
+                            year: yearValue,
                         }),
                     });
 

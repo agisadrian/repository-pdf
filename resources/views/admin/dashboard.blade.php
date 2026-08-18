@@ -7,6 +7,19 @@
     <h1 class="page-title">Dashboard</h1>
     <p class="page-subtitle">Ringkasan repository dokumen.</p>
 
+    @if ($canBecomeSuperAdmin)
+        <div class="alert alert-success" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <span>
+                Belum ada <strong>Super Admin</strong> di sistem ini. Super Admin bisa kelola Kategori
+                & ubah role user lain, tanpa perlu buka database.
+            </span>
+            <form action="{{ route('admin.becomeSuperAdmin') }}" method="POST" onsubmit="return confirm('Jadikan akun kamu Super Admin sekarang?')">
+                @csrf
+                <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap;">Jadikan Saya Super Admin</button>
+            </form>
+        </div>
+    @endif
+
     <div class="stat-grid">
         <div class="stat-card">
             <div class="stat-number">{{ $stats['documents'] }}</div>

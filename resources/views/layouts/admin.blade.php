@@ -11,6 +11,20 @@
                 <a href="{{ route('admin.documents.index') }}" class="{{ request()->routeIs('admin.documents.*') ? 'active' : '' }}">
                      Kelola Dokumen
                 </a>
+                @if (auth()->user()?->isSuperAdmin())
+                    <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
+                         Kelola Kategori
+                    </a>
+                    <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                         Kelola Pengguna
+                    </a>
+                    <a href="{{ route('admin.requests.index') }}" class="{{ request()->routeIs('admin.requests.*') ? 'active' : '' }}">
+                         Permintaan Admin
+                        @if (($pendingAdminRequestsCount ?? 0) > 0)
+                            <span class="nav-count-badge">{{ $pendingAdminRequestsCount }}</span>
+                        @endif
+                    </a>
+                @endif
             </nav>
         </aside>
 

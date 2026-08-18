@@ -37,7 +37,9 @@
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
 
-           
+            <p class="auth-switch">
+                Belum punya akun? <a href="{{ route('register') }}">Daftar di sini</a>
+            </p>
         </div>
     </div>
 

@@ -898,6 +898,46 @@ a {
     text-align: center;
 }
 
+.auth-switch {
+    text-align: center;
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 18px;
+}
+
+.auth-switch a {
+    color: #4338ca;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+
+/* Badge status "menunggu persetujuan" di navbar, buat user yang lagi ngajuin jadi admin */
+.nav-status-badge {
+    display: inline-block;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+/* Badge angka jumlah permintaan admin yang pending, di menu sidebar admin */
+.nav-count-badge {
+    display: inline-block;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    margin-left: 6px;
+}
+
 .alert {
     padding: 10px 14px;
     border-radius: 8px;
@@ -1053,12 +1093,14 @@ a {
     color: #3730a3;
     font-size: 14px;
     margin-right: 4px;
+    white-space: nowrap;
 }
 
 .bulk-edit-select {
     padding: 8px 10px;
     font-size: 14px;
-    width: auto;
+    width: 168px;
+    flex: 0 0 168px;
 }
 
 .admin-table {
@@ -1168,6 +1210,49 @@ textarea.form-input {
 
 .inline-form {
     display: inline;
+}
+
+/* Form pendek berjajar horizontal, dipakai di form tambah kategori & edit kategori inline */
+.inline-form-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.inline-form-row .form-input {
+    width: auto;
+    flex: 0 1 260px;
+}
+
+.panel-subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+/* Label kecil warna-warni buat role user di halaman Kelola Pengguna */
+.role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.role-badge-user {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.role-badge-admin {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.role-badge-super_admin {
+    background: #ede9fe;
+    color: #6d28d9;
 }
 
 /* Footer */

@@ -24,10 +24,22 @@ class DocumentController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        // Daftar tahun buat dropdown bulk-edit "Tahun". Diambil dari data yang sudah ada,
+        // ditambah tahun sekarang (kalau belum ada dokumen bertahun sekarang, tetap muncul)
+        $years = Document::query()
+            ->whereNotNull('year')
+            ->distinct()
+            ->pluck('year')
+            ->push((int) date('Y'))
+            ->unique()
+            ->sortDesc()
+            ->values();
+
         return view('admin.documents.index', [
             'documents' => $documents,
             'keyword' => $request->query('q'),
             'categories' => Category::orderBy('name')->get(),
+            'years' => $years,
         ]);
     }
 
@@ -205,11 +217,13 @@ class DocumentController extends Controller
             'document_ids.*' => ['integer', 'exists:documents,id'],
             'category_id' => ['nullable', 'string'],
             'month' => ['nullable', 'string'],
+            'year' => ['nullable', 'string'],
         ]);
 
         $ids = $request->input('document_ids');
         $categoryInput = $request->input('category_id'); // '' / null = tidak diubah, 'none' = kosongkan, angka = id kategori
         $monthInput = $request->input('month'); // '' / null = tidak diubah, 'none' = kosongkan, 1-12 = bulan
+        $yearInput = $request->input('year'); // '' / null = tidak diubah, 'none' = kosongkan, angka = tahun
 
         $updateData = [];
 
@@ -233,8 +247,18 @@ class DocumentController extends Controller
             }
         }
 
+        if (filled($yearInput)) {
+            if ($yearInput === 'none') {
+                $updateData['year'] = null;
+            } elseif (is_numeric($yearInput) && $yearInput >= 1900 && $yearInput <= (int) date('Y') + 1) {
+                $updateData['year'] = (int) $yearInput;
+            } else {
+                return response()->json(['message' => 'Tahun yang dipilih tidak valid.'], 422);
+            }
+        }
+
         if (empty($updateData)) {
-            return response()->json(['message' => 'Pilih dulu Kategori atau Bulan yang mau diterapkan.'], 422);
+            return response()->json(['message' => 'Pilih dulu Kategori, Bulan, atau Tahun yang mau diterapkan.'], 422);
         }
 
         $count = Document::whereIn('id', $ids)->update($updateData);
@@ -307,7 +331,7 @@ class DocumentController extends Controller
             $parser = new PdfParser();
             $pdf = $parser->parseFile(Storage::disk('public')->path($path));
 
-            $text = $pdf->getText();
+            $text = $this->sanitizeUtf8($pdf->getText());
             $totalPages = count($pdf->getPages());
         } catch (\Throwable $e) {
             // Kalau PDF-nya rusak/terenkripsi/gagal dibaca, dokumen tetap disimpan
@@ -320,6 +344,26 @@ class DocumentController extends Controller
             'text' => $text,
             'total_pages' => $totalPages,
         ];
+    }
+
+    // Bersihin teks hasil ekstraksi PDF dari byte UTF-8 yang nggak valid.
+    // Beberapa PDF (hasil scan, font custom/CID, atau file yang agak korup)
+    // menghasilkan teks dengan karakter rusak yang bikin json_encode() dan
+    // penyimpanan ke kolom utf8mb4 di MySQL gagal ("Malformed UTF-8 characters...").
+    private function sanitizeUtf8(string $text): string
+    {
+        // Buang null byte dulu, sering bikin masalah juga di MySQL
+        $text = str_replace("\0", '', $text);
+
+        // Coba re-encode, buang byte yang nggak valid
+        $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+
+        if ($clean === false || $clean === null) {
+            // Fallback kalau iconv gagal total
+            $clean = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        }
+
+        return $clean;
     }
 
     // Simpan cover: prioritas file upload manual, kalau nggak ada pakai hasil

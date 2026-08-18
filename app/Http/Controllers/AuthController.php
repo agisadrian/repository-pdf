@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -16,9 +19,9 @@ class AuthController extends Controller
     // Tampilkan halaman form login
     public function showLogin()
     {
-        // Kalau sudah login, langsung lempar ke dashboard
+        // Kalau sudah login, lempar ke tempat yang sesuai (admin ke dashboard, user biasa ke home)
         if (Auth::check()) {
-            return redirect('/admin/dashboard');
+            return redirect(Auth::user()->isAdmin() ? '/admin/dashboard' : '/');
         }
 
         return view('auth.login');
@@ -48,6 +51,12 @@ class AuthController extends Controller
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
+            // User biasa (belum admin) nggak punya akses ke /admin/dashboard,
+            // jadi jangan diarahkan ke sana biar nggak kena 403 -- balikin ke home.
+            if (! Auth::user()->isAdmin()) {
+                return redirect('/');
+            }
+
             return redirect()->intended('/admin/dashboard');
         }
 
@@ -58,6 +67,47 @@ class AuthController extends Controller
         return back()
             ->withErrors(['email' => 'Email atau password salah.'])
             ->onlyInput('email');
+    }
+
+    // Tampilkan halaman form daftar akun baru
+    public function showRegister()
+    {
+        if (Auth::check()) {
+            return redirect(Auth::user()->isAdmin() ? '/admin/dashboard' : '/');
+        }
+
+        return view('auth.register');
+    }
+
+    // Proses daftar akun baru. Semua akun baru mulai dengan role 'user'.
+    // Kalau centang "Ajukan jadi Admin", dicatat waktu pengajuannya supaya
+    // muncul di halaman "Permintaan Admin" milik Super Admin untuk disetujui/ditolak.
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+            'request_admin' => ['nullable', 'boolean'],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role' => 'user',
+            'admin_requested_at' => $request->boolean('request_admin') ? now() : null,
+        ]);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        if ($user->hasPendingAdminRequest()) {
+            return redirect('/')
+                ->with('success', 'Akun berhasil dibuat! Pengajuan kamu untuk jadi Admin sudah dikirim dan menunggu persetujuan Super Admin.');
+        }
+
+        return redirect('/')->with('success', 'Akun berhasil dibuat! Selamat datang.');
     }
 
     // Proses logout

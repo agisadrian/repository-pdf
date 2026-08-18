@@ -15,6 +15,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'admin_requested_at',
     ];
 
     protected $hidden = [
@@ -27,6 +28,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'admin_requested_at' => 'datetime',
         ];
     }
 
@@ -37,6 +39,20 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'super_admin'], true);
+    }
+
+    // Super admin: level di atas admin biasa. Bisa kelola Kategori & ubah role user lain
+    // (naikin jadi admin/super admin, turunin lagi), yang nggak bisa dilakukan admin biasa.
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    // Ada pengajuan "jadi admin" dari user ini yang masih nunggu keputusan
+    // Super Admin (belum disetujui atau ditolak)
+    public function hasPendingAdminRequest(): bool
+    {
+        return $this->role === 'user' && $this->admin_requested_at !== null;
     }
 }

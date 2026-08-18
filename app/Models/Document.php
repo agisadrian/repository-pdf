@@ -210,16 +210,32 @@ class Document extends Model
         $prefix = $start > 0 ? '&hellip; ' : '';
         $suffix = ($start + $contextLength) < mb_strlen($bestField) ? ' &hellip;' : '';
 
-        // Escape dulu (isi PDF adalah teks mentah, bukan HTML tepercaya), baru highlight
-        // TIAP kata kunci satu-satu (bisa lebih dari satu kata yang ke-highlight di 1 cuplikan)
+        // Escape dulu (isi PDF adalah teks mentah, bukan HTML tepercaya), baru highlight.
+        //
+        // PENTING: semua kata kunci digabung jadi SATU pola regex dan di-replace SEKALI
+        // JALAN -- bukan di-loop per kata satu-satu seperti sebelumnya. Kalau di-loop,
+        // ada 2 bug yang muncul:
+        //   1. Kata kunci yang sama muncul 2x di query (mis. "informatika informatika")
+        //      bikin teks yang sudah di-<mark> ke-highlight LAGI oleh kata kedua, jadi
+        //      nested <mark><mark>...</mark></mark> (HTML rusak, hitungan navigasi salah).
+        //   2. Kalau 1 kata kunci adalah bagian dari kata kunci lain (mis. "kerja" di
+        //      dalam "pekerjaan"), kata pendeknya di-highlight duluan lalu MEMUTUS teks
+        //      "pekerjaan" jadi "pe<mark>kerja</mark>an" -- pas giliran kata "pekerjaan"
+        //      dicari, teksnya sudah gak utuh lagi (ke-selip tag <mark>), jadi GAGAL
+        //      ke-highlight sama sekali walau jelas ada di teks.
+        //
+        // Fix: kata kunci di-unique-kan dulu, diurutkan dari yang PALING PANJANG, baru
+        // digabung jadi satu pola alternation (kata|kata2|...). Urutan terpanjang-dulu
+        // penting biar regex nyoba cocokin "pekerjaan" duluan sebelum "kerja" sempat
+        // "nyerobot" sebagian dari kata itu.
         $escaped = e($raw);
 
-        foreach ($words as $word) {
-            $escaped = preg_replace(
-                '/(' . preg_quote(e($word), '/') . ')/iu',
-                '<mark>$1</mark>',
-                $escaped
-            );
+        $uniqueWords = $words->unique()->sortByDesc(fn ($w) => mb_strlen($w))->values();
+
+        if ($uniqueWords->isNotEmpty()) {
+            $pattern = $uniqueWords->map(fn ($w) => preg_quote(e($w), '/'))->implode('|');
+
+            $escaped = preg_replace('/(' . $pattern . ')/iu', '<mark>$1</mark>', $escaped);
         }
 
         return $prefix . $escaped . $suffix;

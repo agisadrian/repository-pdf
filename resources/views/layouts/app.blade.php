@@ -22,7 +22,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=20260813-5">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}?v=20260813-6">
 </head>
 <body>
 
@@ -34,7 +34,11 @@
                 <a href="{{ route('category.index') }}">Kategori</a>
                 <a href="{{ route('document.search') }}">Cari Dokumen</a>
                 @auth
-                    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+                    @if (auth()->user()->isAdmin())
+                        <a href="{{ route('admin.dashboard') }}">Dashboard</a>
+                    @elseif (auth()->user()->hasPendingAdminRequest())
+                        <span class="nav-status-badge">Menunggu persetujuan Admin</span>
+                    @endif
                     <form action="{{ route('logout') }}" method="POST" class="logout-form">
                         @csrf
                         <button type="submit" class="logout-btn">Logout</button>
@@ -47,6 +51,13 @@
     </header>
 
     <main class="container content">
+        @if (session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="alert alert-error">{{ session('error') }}</div>
+        @endif
+
         @yield('content')
     </main>
 
