@@ -59,6 +59,19 @@ class Document extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function views()
+    {
+        return $this->hasMany(DocumentView::class);
+    }
+
+    // Jumlah IP berbeda yang pernah buka dokumen ini -- beda dari view_count yang
+    // ngitung TOTAL kunjungan (1 IP yang balik lagi besok tetap nambah view_count,
+    // tapi nggak nambah jumlah pengunjung unik karena IP-nya sudah pernah kehitung).
+    public function getUniqueViewersCountAttribute(): int
+    {
+        return $this->views()->distinct('ip_address')->count('ip_address');
+    }
+
     // Ambil abstrak dokumen: kalau admin sudah isi abstrak manual, pakai itu.
     // Kalau kosong, otomatis ambil 2-3 kalimat pertama dari isi PDF sebagai gantinya,
     // ditandai sebagai ringkasan otomatis. Dipakai buat tampilan halaman detail & meta

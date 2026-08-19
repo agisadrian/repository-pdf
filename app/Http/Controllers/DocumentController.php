@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document;
+use App\Models\DocumentView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class DocumentController extends Controller
 {
     // Halaman detail 1 dokumen, diakses lewat slug (contoh: /dokumen/judul-dokumen)
-    public function show(string $slug)
+    public function show(string $slug, Request $request)
     {
         $document = Document::with(['category', 'creator'])
             ->where('slug', $slug)
             ->firstOrFail();
 
-        // Hitung jumlah kali dokumen ini dilihat
-        $document->increment('view_count');
+        $this->recordView($document, $request->ip());
 
         // Dokumen terkait: dari kategori yang sama, dokumen ini sendiri di-exclude
         $relatedDocuments = $document->category_id
@@ -31,6 +31,33 @@ class DocumentController extends Controller
             'document' => $document,
             'relatedDocuments' => $relatedDocuments,
         ]);
+    }
+
+    // Catat 1 kali lihat dari 1 IP, dibatasi 1x per 24 jam per dokumen.
+    // Jadi refresh berkali-kali dalam sehari nggak bikin view_count nambah terus.
+    // Tiap kunjungan yang lolos batas ini juga dicatat ke tabel document_views,
+    // dipakai buat hitung jumlah PENGUNJUNG UNIK (beda dari total_view yang bisa
+    // dobel kalau orang yang sama balik lagi besok/lusa).
+    private function recordView(Document $document, ?string $ipAddress): void
+    {
+        $ipAddress = $ipAddress ?: '0.0.0.0';
+
+        $alreadyViewedToday = DocumentView::where('document_id', $document->id)
+            ->where('ip_address', $ipAddress)
+            ->where('viewed_at', '>=', now()->subDay())
+            ->exists();
+
+        if ($alreadyViewedToday) {
+            return;
+        }
+
+        DocumentView::create([
+            'document_id' => $document->id,
+            'ip_address' => $ipAddress,
+            'viewed_at' => now(),
+        ]);
+
+        $document->increment('view_count');
     }
 
     // Bikin query "boolean mode" buat MATCH() AGAINST(), dipake bareng oleh suggest() dan search().

@@ -11,6 +11,9 @@
                 <a href="{{ route('admin.documents.index') }}" class="{{ request()->routeIs('admin.documents.*') ? 'active' : '' }}">
                      Kelola Dokumen
                 </a>
+                <a href="{{ route('admin.statistics') }}" class="{{ request()->routeIs('admin.statistics') ? 'active' : '' }}">
+                     Laporan Statistik
+                </a>
                 @if (auth()->user()?->isSuperAdmin())
                     <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                          Kelola Kategori

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminRequestController;
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentController as AdminDocumentController;
+use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
@@ -35,6 +36,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/become-super-admin', [DashboardController::class, 'becomeSuperAdmin'])->name('becomeSuperAdmin');
+
+    Route::get('/statistik', [StatisticsController::class, 'index'])->name('statistics');
 
     // CRUD Dokumen: otomatis bikin route index, create, store, edit, update, destroy
     Route::resource('documents', AdminDocumentController::class)->except(['show']);

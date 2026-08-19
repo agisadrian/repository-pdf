@@ -158,6 +158,11 @@
 
         <div class="detail-stats">
             <span>👁️ {{ $document->view_count }} dilihat</span>
+            @auth
+                @if (auth()->user()->isAdmin())
+                    <span>🧑‍🤝‍🧑 {{ $document->unique_viewers_count }} pengunjung unik</span>
+                @endif
+            @endauth
             <span>⬇️ {{ $document->download_count }} diunduh</span>
         </div>
 
