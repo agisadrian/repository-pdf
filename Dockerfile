@@ -16,8 +16,7 @@ RUN apt-get update && apt-get install -y \
     bcmath \
     gd \
     zip \
-    && a2enmod rewrite \
-    && a2dismod mpm_event mpm_worker 2>/dev/null; a2enmod mpm_prefork
+    && a2enmod rewrite
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -47,4 +46,4 @@ RUN chown -R www-data:www-data /var/www/html/storage \
 EXPOSE 80
 
 # Saat container start: pasang port dari Railway, cache config, migrate, lalu jalankan Apache
-CMD ["sh", "-c", "sed -ri \"s/Listen 80/Listen ${PORT:-80}/\" /etc/apache2/ports.conf && sed -ri \"s/:80/:${PORT:-80}/\" /etc/apache2/sites-available/*.conf && php artisan config:clear && php artisan migrate --force && apache2-foreground"]
+CMD ["sh", "-c", "rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_event.conf /etc/apache2/mods-enabled/mpm_worker.load /etc/apache2/mods-enabled/mpm_worker.conf && ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load && ln -sf /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf && sed -ri \"s/Listen 80/Listen ${PORT:-80}/\" /etc/apache2/ports.conf && sed -ri \"s/:80/:${PORT:-80}/\" /etc/apache2/sites-available/*.conf && php artisan config:clear && php artisan migrate --force && apache2-foreground"]
