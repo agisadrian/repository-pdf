@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActivityLog;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -30,7 +31,9 @@ class CategoryController extends Controller
 
         $data['slug'] = $this->generateUniqueSlug($data['name']);
 
-        Category::create($data);
+        $category = Category::create($data);
+
+        AdminActivityLog::record('category.created', "Menambahkan kategori \"{$category->name}\"", $category);
 
         return redirect()
             ->route('admin.categories.index')
@@ -49,7 +52,10 @@ class CategoryController extends Controller
             $data['slug'] = $this->generateUniqueSlug($data['name'], $category->id);
         }
 
+        $oldName = $category->name;
         $category->update($data);
+
+        AdminActivityLog::record('category.updated', "Mengubah kategori \"{$oldName}\" menjadi \"{$category->name}\"", $category);
 
         return redirect()
             ->route('admin.categories.index')
@@ -61,6 +67,8 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $documentCount = $category->documents()->count();
+
+        AdminActivityLog::record('category.deleted', "Menghapus kategori \"{$category->name}\"", $category);
 
         $category->delete();
 

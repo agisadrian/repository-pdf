@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActivityLog;
 use App\Models\Category;
 use App\Models\Document;
 use Illuminate\Http\Request;
@@ -69,7 +70,9 @@ class DocumentController extends Controller
         unset($data['cover'], $data['cover_auto']);
         $data['cover'] = $this->storeCover($request);
 
-        Document::create($data);
+        $document = Document::create($data);
+
+        AdminActivityLog::record('document.created', "Menambahkan dokumen \"{$document->title}\"", $document);
 
         return redirect()
             ->route('admin.documents.index')
@@ -122,6 +125,8 @@ class DocumentController extends Controller
 
         $document->update($data);
 
+        AdminActivityLog::record('document.updated', "Mengubah dokumen \"{$document->title}\"", $document);
+
         return redirect()
             ->route('admin.documents.index')
             ->with('success', 'Dokumen berhasil diperbarui.');
@@ -137,6 +142,10 @@ class DocumentController extends Controller
         if ($document->cover) {
             Storage::disk('public')->delete($document->cover);
         }
+
+        // Dicatat SEBELUM delete, biar subject_id-nya masih valid nunjuk ke dokumen
+        // yang baru dihapus itu (walau datanya sendiri sudah nggak ada lagi)
+        AdminActivityLog::record('document.deleted', "Menghapus dokumen \"{$document->title}\"", $document);
 
         $document->delete();
 
@@ -263,6 +272,8 @@ class DocumentController extends Controller
 
         $count = Document::whereIn('id', $ids)->update($updateData);
 
+        AdminActivityLog::record('document.bulk_updated', "Mengubah {$count} dokumen sekaligus (bulk edit)");
+
         return response()->json([
             'message' => $count . ' dokumen berhasil diperbarui sekaligus.',
             'count' => $count,
@@ -292,6 +303,8 @@ class DocumentController extends Controller
         }
 
         $count = Document::whereIn('id', $documents->pluck('id'))->delete();
+
+        AdminActivityLog::record('document.bulk_deleted', "Menghapus {$count} dokumen sekaligus (bulk delete): " . $documents->pluck('title')->implode(', '));
 
         return response()->json([
             'message' => $count . ' dokumen berhasil dihapus sekaligus.',

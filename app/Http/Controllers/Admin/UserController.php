@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +44,10 @@ class UserController extends Controller
             }
         }
 
+        $oldRole = $user->role;
         $user->update(['role' => $data['role']]);
+
+        AdminActivityLog::record('user.role_changed', "Mengubah role \"{$user->name}\" dari {$oldRole} menjadi {$data['role']}", $user);
 
         return back()->with('success', 'Role "' . $user->name . '" berhasil diubah jadi ' . $data['role'] . '.');
     }

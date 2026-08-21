@@ -1,4 +1,4 @@
-﻿# Proteksi tambahan buat hosting yang naruh SELURUH folder aplikasi (bukan cuma folder public/) langsung bisa diakses browser, seperti InfinityFree.
+# Proteksi tambahan buat hosting yang naruh SELURUH folder aplikasi (bukan cuma folder public/) langsung bisa diakses browser, seperti InfinityFree.
 <FilesMatch "^\.">
     <IfModule mod_authz_core.c>
         Require all denied

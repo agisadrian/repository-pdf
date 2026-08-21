@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminActivityLog;
 use App\Models\User;
 
 class AdminRequestController extends Controller
@@ -32,6 +33,8 @@ class AdminRequestController extends Controller
             'admin_requested_at' => null,
         ]);
 
+        AdminActivityLog::record('request.approved', "Menyetujui permintaan jadi admin dari \"{$user->name}\"", $user);
+
         return back()->with('success', 'Pengajuan "' . $user->name . '" disetujui. User ini sekarang Admin.');
     }
 
@@ -45,6 +48,8 @@ class AdminRequestController extends Controller
         $user->update([
             'admin_requested_at' => null,
         ]);
+
+        AdminActivityLog::record('request.rejected', "Menolak permintaan jadi admin dari \"{$user->name}\"", $user);
 
         return back()->with('success', 'Pengajuan "' . $user->name . '" ditolak.');
     }

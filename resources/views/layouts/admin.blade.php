@@ -15,6 +15,9 @@
                      Laporan Statistik
                 </a>
                 @if (auth()->user()?->isSuperAdmin())
+                    <a href="{{ route('admin.activityLog') }}" class="{{ request()->routeIs('admin.activityLog') ? 'active' : '' }}">
+                         Log Aktivitas
+                    </a>
                     <a href="{{ route('admin.categories.index') }}" class="{{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
                          Kelola Kategori
                     </a>
