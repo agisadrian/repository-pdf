@@ -3,6 +3,7 @@ FROM php:8.2-apache
 # Install kebutuhan Laravel
 RUN apt-get update && apt-get install -y \
     git \
+    curl \
     unzip \
     libzip-dev \
     libpng-dev \
@@ -21,6 +22,9 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Install Node.js (buat compile CSS/JS Tailwind & Vite)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+
 # Folder aplikasi
 WORKDIR /var/www/html
 
@@ -29,6 +33,9 @@ COPY . .
 
 # Install dependency Laravel
 RUN composer install --no-dev --optimize-autoloader
+
+# Install dependency frontend & compile asset (Tailwind/Vite)
+RUN npm install && npm run build
 
 # Ubah document root Apache ke folder public Laravel
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
